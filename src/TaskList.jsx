@@ -1,86 +1,65 @@
+// src/TaskList.jsx
 import { useState } from "react";
 
 export default function TaskList({ tasks, setTasks, users }) {
-  const [showControls, setShowControls] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [newTask, setNewTask] = useState("");
-  const [assignedUser, setAssignedUser] = useState(users[0] || "");
+  const [assignedUser, setAssignedUser] = useState("");
+  const [durationHours, setDurationHours] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(0);
+  const [error, setError] = useState("");
 
   const addTask = () => {
-    if (!newTask.trim() || !assignedUser) return;
-    setTasks([
-      ...tasks,
-      {
-        id: Date.now(),
-        text: newTask.trim(),
-        assignedTo: assignedUser,
-        done: false,
-      },
-    ]);
+    if (users.length === 0) {
+      setError("Añade primero al menos un participante.");
+      return;
+    }
+    if (!newTask.trim()) {
+      setError("La tarea no puede estar vacía.");
+      return;
+    }
+    if (!assignedUser) {
+      setError("Selecciona a quién asignar.");
+      return;
+    }
+    const item = {
+      id: Date.now(),
+      text: newTask.trim(),
+      assignedTo: assignedUser,
+      done: false,
+      duration: { hours: durationHours, minutes: durationMinutes }
+    };
+    setTasks([...tasks, item]);
     setNewTask("");
-    setAssignedUser(users[0] || "");
+    setAssignedUser("");
+    setDurationHours(0);
+    setDurationMinutes(0);
+    setError("");
   };
 
-  const deleteTask = (i) =>
-    setTasks(tasks.filter((_, idx) => idx !== i));
-
-  const toggleDone = (i) => {
-    setTasks(
-      tasks.map((t, idx) =>
-        idx === i ? { ...t, done: !t.done } : t
-      )
-    );
+  const toggleDone = (id) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
   };
+
+  const deleteTask = (id) => {
+    setTasks(tasks.filter(t => t.id !== id));
+  };
+
+  const pending = tasks.filter(t => !t.done);
+  const doneList = tasks.filter(t => t.done);
 
   return (
     <div>
       <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         Tareas
         <button
-          onClick={() => setShowControls(!showControls)}
+          onClick={() => setShowForm(f => !f)}
           style={{ fontSize: '1.25rem' }}
-        >
-          +
-        </button>
+        >+</button>
       </h2>
 
-      <ul>
-        {tasks.map((task, i) => (
-          <li
-            key={task.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '0.5rem',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={task.done}
-              onChange={() => toggleDone(i)}
-              style={{ marginRight: '0.5rem' }}
-            />
-            <span
-              style={{
-                textDecoration: task.done ? 'line-through' : 'none',
-                flexGrow: 1,
-              }}
-            >
-              {task.text} - <em>{task.assignedTo}</em>
-            </span>
-            {showControls && (
-              <button
-                onClick={() => deleteTask(i)}
-                style={{ marginLeft: '0.5rem', color: 'red' }}
-              >
-                🗑️
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {showControls && (
-        <div style={{ marginTop: '1rem' }}>
+      {showForm && (
+        <div style={{ marginBottom: '1rem' }}>
           <input
             placeholder="Nueva tarea"
             value={newTask}
@@ -92,16 +71,85 @@ export default function TaskList({ tasks, setTasks, users }) {
             onChange={e => setAssignedUser(e.target.value)}
             style={{ marginRight: '0.5rem' }}
           >
-            <option value="">Asignar a...</option>
-            {users.map((u, idx) => (
-              <option key={idx} value={u}>
-                {u}
-              </option>
+            <option value="">Asignar a…</option>
+            {users.map(u => (
+              <option key={u.id} value={u.name}>{u.name}</option>
             ))}
           </select>
-          <button onClick={addTask}>Añadir</button>
+          <input
+            type="number"
+            min="0"
+            max="23"
+            value={durationHours}
+            onChange={e => setDurationHours(Number(e.target.value))}
+            style={{ width: '50px', marginRight: '0.2rem' }}
+            title="Horas"
+          />H
+          <input
+            type="number"
+            min="0"
+            max="59"
+            value={durationMinutes}
+            onChange={e => setDurationMinutes(Number(e.target.value))}
+            style={{ width: '50px', marginLeft: '0.2rem', marginRight: '0.5rem' }}
+            title="Minutos"
+          />Min
+          <button onClick={addTask}>Añadir tarea</button>
+          {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
       )}
+
+      <h3>Por hacer</h3>
+      {pending.length === 0
+        ? <p>No hay tareas pendientes.</p>
+        : (
+          <ul>
+            {pending.map(t => (
+              <li key={t.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={t.done}
+                  onChange={() => toggleDone(t.id)}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span style={{ flexGrow: 1 }}>
+                  {t.text} — <em>{t.assignedTo}</em>
+                  {t.duration?.hours != null && t.duration?.minutes != null && (
+                    <> [{t.duration.hours}H {t.duration.minutes}Min]</>
+                  )}
+                </span>
+                <button onClick={() => deleteTask(t.id)} style={{ color: 'red' }}>🗑️</button>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+
+      <h3>Hechas</h3>
+      {doneList.length === 0
+        ? <p>No hay tareas hechas.</p>
+        : (
+          <ul>
+            {doneList.map(t => (
+              <li key={t.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={t.done}
+                  onChange={() => toggleDone(t.id)}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span style={{ textDecoration: 'line-through', flexGrow: 1 }}>
+                  {t.text} — <em>{t.assignedTo}</em>
+                  {t.duration?.hours != null && t.duration?.minutes != null && (
+                    <> [{t.duration.hours}H {t.duration.minutes}Min]</>
+                  )}
+                </span>
+                <button onClick={() => deleteTask(t.id)} style={{ color: 'red' }}>🗑️</button>
+              </li>
+            ))}
+          </ul>
+        )
+      }
     </div>
   );
 }

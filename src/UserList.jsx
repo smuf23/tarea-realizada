@@ -8,23 +8,23 @@ export default function UserList({ users, setUsers }) {
 
   const addUser = () => {
     if (!newUser.trim()) return;
-    setUsers([...users, newUser.trim()]);
+    setUsers([...users, { id: Date.now(), name: newUser.trim() }]);
     setNewUser("");
   };
 
-  const deleteUser = (i) =>
-    setUsers(users.filter((_, idx) => idx !== i));
-
-  const startEditing = (i) => {
-    setEditingIndex(i);
-    setEditingName(users[i]);
+  const deleteUser = (id) => {
+    setUsers(users.filter(u => u.id !== id));
   };
 
-  const saveEdit = (i) => {
+  const startEditing = (id) => {
+    const user = users.find(u => u.id === id);
+    setEditingIndex(id);
+    setEditingName(user.name);
+  };
+
+  const saveEdit = (id) => {
     if (!editingName.trim()) return;
-    const updated = [...users];
-    updated[i] = editingName.trim();
-    setUsers(updated);
+    setUsers(users.map(u => u.id === id ? { ...u, name: editingName.trim() } : u));
     setEditingIndex(null);
   };
 
@@ -38,11 +38,9 @@ export default function UserList({ users, setUsers }) {
       <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         Participantes
         <button
-          onClick={() => setShowControls(!showControls)}
+          onClick={() => setShowControls(c => !c)}
           style={{ fontSize: '1.25rem' }}
-        >
-          +
-        </button>
+        >+</button>
       </h2>
 
       {showControls ? (
@@ -55,24 +53,23 @@ export default function UserList({ users, setUsers }) {
             />
             <button onClick={addUser}>Añadir</button>
           </div>
-
           <ul>
-            {users.map((u, i) => (
-              <li key={i} style={{ marginBottom: '0.5rem' }}>
-                {editingIndex === i ? (
+            {users.map(u => (
+              <li key={u.id} style={{ marginBottom: '0.5rem' }}>
+                {editingIndex === u.id ? (
                   <>
                     <input
                       value={editingName}
                       onChange={e => setEditingName(e.target.value)}
                     />
-                    <button onClick={() => saveEdit(i)}>Guardar</button>
+                    <button onClick={() => saveEdit(u.id)}>Guardar</button>
                     <button onClick={cancelEdit}>Cancelar</button>
                   </>
                 ) : (
                   <>
-                    {u}{' '}
-                    <button onClick={() => startEditing(i)}>Editar</button>
-                    <button onClick={() => deleteUser(i)}>Borrar</button>
+                    {u.name}{" "}
+                    <button onClick={() => startEditing(u.id)}>Editar</button>
+                    <button onClick={() => deleteUser(u.id)}>Borrar</button>
                   </>
                 )}
               </li>
@@ -81,8 +78,8 @@ export default function UserList({ users, setUsers }) {
         </>
       ) : (
         <ul>
-          {users.map((u, i) => (
-            <li key={i}>{u}</li>
+          {users.map(u => (
+            <li key={u.id}>{u.name}</li>
           ))}
         </ul>
       )}

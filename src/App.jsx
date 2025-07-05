@@ -1,17 +1,22 @@
-import { useState } from "react";
-import UserList from "./UserList";
-import TaskList from "./TaskList";
+// src/App.jsx
+import { useAuth } from "./AuthContext";
+import Login from "./Login";
+import Signup from "./Signup";
+import TaskApp from "./TaskApp";
 
 export default function App() {
-  const [users, setUsers] = useState(["Alejandro", "Nazareth"]);
-  const [tasks, setTasks] = useState([]);
+  const { user } = useAuth();
 
-  return (
-    <div style={{ padding: "2rem" }}>
-      <h1>Casa: SmufulHausse</h1>
-      <UserList users={users} setUsers={setUsers} />
-      <hr style={{ margin: "2rem 0" }} />
-      <TaskList users={users} tasks={tasks} setTasks={setTasks} />
-    </div>
-  );
+  // Si no hay usuario autenticado, mostrar pantallas de registro e inicio
+  if (!user) {
+    return (
+      <>
+        <Signup />
+        <Login />
+      </>
+    );
+  }
+
+  // Si está autenticado, mostrar la aplicación de tareas
+  return <TaskApp />;
 }
