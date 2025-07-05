@@ -7,7 +7,7 @@ import TaskApp from "./TaskApp";
 export default function App() {
   const { user } = useAuth();
 
-  // Si no hay usuario autenticado, mostrar pantallas de registro e inicio
+  // Si no hay usuario, mostramos registro y login
   if (!user) {
     return (
       <>
@@ -17,6 +17,6 @@ export default function App() {
     );
   }
 
-  // Si está autenticado, mostrar la aplicación de tareas
+  // Si hay usuario, mostramos la aplicación de tareas
   return <TaskApp />;
 }

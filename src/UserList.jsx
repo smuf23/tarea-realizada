@@ -1,88 +1,82 @@
-import { useState } from "react";
+// src/UserList.jsx
+import { useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "./firebaseConfig";
 
-export default function UserList({ users, setUsers }) {
-  const [showControls, setShowControls] = useState(false);
-  const [newUser, setNewUser] = useState("");
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [editingName, setEditingName] = useState("");
+export default function UserList({ houseId }) {
+  const { user } = useAuth();
+  const [members, setMembers] = useState([]);
+  const [nickname, setNickname] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState("");
 
-  const addUser = () => {
-    if (!newUser.trim()) return;
-    setUsers([...users, { id: Date.now(), name: newUser.trim() }]);
-    setNewUser("");
-  };
+  // Carga miembros y nickname inicial
+  useEffect(() => {
+    async function fetchMembers() {
+      const snap = await getDoc(doc(db, "houses", houseId));
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const list = data.membersInfo && data.membersInfo.length > 0
+        ? data.membersInfo
+        : [{ uid: user.uid, email: user.email, nickname: "" }];
+      setMembers(list);
+      const me = list.find(u => u.uid === user.uid);
+      if (me) setNickname(me.nickname || "");
+    }
+    fetchMembers();
+  }, [houseId, user.uid, user.email]);
 
-  const deleteUser = (id) => {
-    setUsers(users.filter(u => u.id !== id));
-  };
-
-  const startEditing = (id) => {
-    const user = users.find(u => u.id === id);
-    setEditingIndex(id);
-    setEditingName(user.name);
-  };
-
-  const saveEdit = (id) => {
-    if (!editingName.trim()) return;
-    setUsers(users.map(u => u.id === id ? { ...u, name: editingName.trim() } : u));
-    setEditingIndex(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingIndex(null);
-    setEditingName("");
+  // Guarda el nickname y sale del modo edición
+  const saveNickname = async () => {
+    if (!nickname.trim()) {
+      setError("El nickname no puede estar vacío.");
+      return;
+    }
+    try {
+      const updated = members.map(u =>
+        u.uid === user.uid ? { ...u, nickname: nickname.trim() } : u
+      );
+      await updateDoc(doc(db, "houses", houseId), { membersInfo: updated });
+      setMembers(updated);
+      setEditing(false);
+      setError("");
+    } catch {
+      setError("Error guardando nickname.");
+    }
   };
 
   return (
     <div>
-      <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        Participantes
-        <button
-          onClick={() => setShowControls(c => !c)}
-          style={{ fontSize: '1.25rem' }}
-        >+</button>
-      </h2>
+      <h2>Miembros</h2>
+      <ul>
+        {members.map(u => (
+          <li key={u.uid}>
+            {u.nickname || u.email} {u.uid === user.uid && <strong>(tú)</strong>}
+          </li>
+        ))}
+      </ul>
 
-      {showControls ? (
-        <>
-          <div style={{ marginBottom: '1rem' }}>
+      <div style={{ marginTop: "1rem" }}>
+        <h3>Tu nickname</h3>
+        {!editing && nickname ? (
+          <>
+            <span style={{ marginRight: "0.5rem" }}>{nickname}</span>
+            <button onClick={() => setEditing(true)}>+</button>
+          </>
+        ) : (
+          <>
             <input
-              placeholder="Nombre del participante"
-              value={newUser}
-              onChange={e => setNewUser(e.target.value)}
+              placeholder="Pon tu nickname"
+              value={nickname}
+              onChange={e => setNickname(e.target.value)}
+              style={{ marginRight: "0.5rem" }}
             />
-            <button onClick={addUser}>Añadir</button>
-          </div>
-          <ul>
-            {users.map(u => (
-              <li key={u.id} style={{ marginBottom: '0.5rem' }}>
-                {editingIndex === u.id ? (
-                  <>
-                    <input
-                      value={editingName}
-                      onChange={e => setEditingName(e.target.value)}
-                    />
-                    <button onClick={() => saveEdit(u.id)}>Guardar</button>
-                    <button onClick={cancelEdit}>Cancelar</button>
-                  </>
-                ) : (
-                  <>
-                    {u.name}{" "}
-                    <button onClick={() => startEditing(u.id)}>Editar</button>
-                    <button onClick={() => deleteUser(u.id)}>Borrar</button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <ul>
-          {users.map(u => (
-            <li key={u.id}>{u.name}</li>
-          ))}
-        </ul>
-      )}
+            <button onClick={saveNickname}>Guardar</button>
+          </>
+        )}
+        {error && <p style={{ color: "red" }}>{error}</p>}
+      </div>
     </div>
   );
 }
